@@ -8,13 +8,13 @@
 
 ```
 horivis/
-├── horivis-site.html     # Landing page de marketing
+├── horivis-index.html.  # Landing page de marketing
 └── horivis-app.jsx       # Plataforma IA (React)
 ```
 
 ---
 
-## 🌐 Site (`horivis-site.html`)
+## 🌐 Site (`index.html`)
 
 Landing page completa da HORIVIS. Abra direto no navegador ou hospede em qualquer servidor estático (Vercel, Netlify, GitHub Pages).
 
