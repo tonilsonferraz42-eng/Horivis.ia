@@ -1,0 +1,27 @@
+# Dependências
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Variáveis de ambiente (todas as pastas)
+.env
+**/.env
+.env.*
+**/.env.*
+
+# Build
+dist/
+frontend/dist/
+
+# Dados sensíveis / senhas
+horivis senhas/
+senhas*/
+*sensitive*
+*credential*
+*secret*
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.log
+.jsx.cpc
