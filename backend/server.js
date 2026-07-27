@@ -185,7 +185,7 @@ app.post('/api/keywords', async (req, res) => {
       return res.status(500).json({ error: 'GOOGLE_ADS_CUSTOMER_ID inválido no .env', requestId });
     }
 
-    const url = `https://googleads.googleapis.com/v14/customers/${customerId}/keywordPlanIdeas:generateKeywordIdeas`;
+    const url = `https://googleads.googleapis.com/v16/customers/${customerId}/keywordPlanIdeas:generateKeywordIdeas`;
     const body = {
       keywordAndUrlSeed: { keywords: [keyword.trim()], url: 'https://www.google.com/' },
       includeAdultKeywords: false,
