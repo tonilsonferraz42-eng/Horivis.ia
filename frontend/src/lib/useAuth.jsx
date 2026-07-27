@@ -3,58 +3,149 @@ import { supabase } from '../supabaseClient';
 
 const AuthContext = createContext(null);
 
+function hasSupabaseConfig() {
+  return Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState(null);
 
   useEffect(() => {
-    // Verifica sessão existente ao montar
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      setLoading(false);
-    }).catch(() => {
-      setLoading(false);
-    });
+    const restore = async () => {
+      setLoading(true);
+      setAuthError(null);
 
-    // Escuta mudanças de autenticação em tempo real
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      setLoading(false);
-    });
+      try {
+        if (!hasSupabaseConfig()) {
+          throw new Error('Authentication service unavailable');
+        }
 
-    return () => subscription?.unsubscribe();
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        if (error) {
+          throw error;
+        }
+
+        if (currentSession?.user) {
+          setSession(currentSession);
+          setUser(currentSession.user);
+        } else {
+          setSession(null);
+          setUser(null);
+        }
+      } catch {
+        setSession(null);
+        setUser(null);
+        setAuthError('Não foi possível validar a sessão no momento. Tente novamente.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    restore();
+
+    let subscription = null;
+    try {
+      const response = supabase.auth.onAuthStateChange((_event, currentSession) => {
+        if (currentSession?.user) {
+          setSession(currentSession);
+          setUser(currentSession.user);
+          setAuthError(null);
+        } else {
+          setSession(null);
+          setUser(null);
+          setAuthError(null);
+        }
+        setLoading(false);
+      });
+      subscription = response?.data?.subscription ?? null;
+    } catch {
+      // sem listener externo disponível
+    }
+
+    return () => subscription?.unsubscribe?.();
   }, []);
 
   const signIn = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    return data;
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!hasSupabaseConfig()) {
+      throw new Error('Authentication service unavailable. Please try again later.');
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+      if (error) {
+        throw error;
+      }
+
+      if (!data?.user) {
+        throw new Error('Unable to sign in');
+      }
+
+      setUser(data.user);
+      setSession(data.session);
+      setAuthError(null);
+      return data;
+    } catch (err) {
+      setUser(null);
+      setSession(null);
+      setAuthError('Não foi possível iniciar sessão. Verifique as credenciais e tente novamente.');
+      throw err;
+    }
   };
 
   const signUp = async (email, password) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth`,
-      },
-    });
-    if (error) throw error;
-    return data;
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!hasSupabaseConfig()) {
+      throw new Error('Authentication service unavailable. Please try again later.');
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signUp({ email: normalizedEmail, password });
+      if (error) {
+        throw error;
+      }
+
+      if (data?.session) {
+        setUser(data.user);
+        setSession(data.session);
+      } else {
+        setUser(null);
+        setSession(null);
+      }
+
+      setAuthError(null);
+      return data;
+    } catch (err) {
+      setUser(null);
+      setSession(null);
+      setAuthError('Não foi possível criar a conta. Tente novamente mais tarde.');
+      throw err;
+    }
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // noop
+    }
+
     setUser(null);
     setSession(null);
+    setAuthError(null);
+  };
+
+  const clearAuthError = () => {
+    setAuthError(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, authError, signIn, signUp, signOut, clearAuthError }}>
       {children}
     </AuthContext.Provider>
   );

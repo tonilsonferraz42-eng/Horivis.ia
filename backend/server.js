@@ -24,14 +24,12 @@ const checkEnv = () => {
     'ANTHROPIC_API_KEY',
     'ANTHROPIC_BASE_URL'
   ];
-  const missing = required.filter((key) => !process.env[key]);
-  if (missing.length > 0) {
-    console.error(`[FATAL] Variáveis de ambiente em falta: ${missing.join(', ')}`);
-    console.error(`[FATAL] Ficheiro .env esperado em: ${envPath}`);
-    process.exit(1);
-  }
+  return required.filter((key) => !process.env[key]);
 };
-checkEnv();
+const missingEnv = checkEnv();
+if (missingEnv.length > 0) {
+  console.warn(`[WARN] Variáveis de ambiente em falta: ${missingEnv.join(', ')}. O servidor iniciará em modo de demonstração com respostas claras.`);
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -82,9 +80,9 @@ app.post('/api/claude/v1/messages', async (req, res) => {
 
   if (!ANTHROPIC_API_KEY) {
     log.error('Proxy Claude: ANTHROPIC_API_KEY não configurada', { requestId });
-    return res.status(500).json({
-      error: 'Erro de configuração do servidor',
-      message: 'Chave de API Anthropic não configurada',
+    return res.status(503).json({
+      error: 'Serviço de IA indisponível',
+      message: 'A chave Anthropic não está configurada no servidor. Tente novamente mais tarde.',
       requestId
     });
   }
@@ -167,6 +165,14 @@ app.post('/api/keywords', async (req, res) => {
   if (!keyword || typeof keyword !== 'string' || keyword.trim().length < 2) {
     return res.status(400).json({
       error: 'Informe uma palavra-chave válida com pelo menos 2 caracteres.',
+      requestId
+    });
+  }
+
+  if (!process.env.GOOGLE_ADS_CLIENT_ID || !process.env.GOOGLE_ADS_CLIENT_SECRET || !process.env.GOOGLE_ADS_DEVELOPER_TOKEN || !process.env.GOOGLE_ADS_REFRESH_TOKEN) {
+    return res.status(503).json({
+      error: 'Serviço Google Ads indisponível',
+      message: 'As credenciais do Google Ads não estão configuradas no backend.',
       requestId
     });
   }
@@ -273,7 +279,7 @@ if (GOOGLE_DRIVE_CLIENT_ID && GOOGLE_DRIVE_CLIENT_SECRET) {
 const driveTokens = new Map();
 
 // Rota: iniciar autenticação Google Drive
-app.get('/auth/google-drive', (req, res) => {
+app.get('/api/auth/google-drive', (req, res) => {
   if (!driveOAuthClient) {
     return res.status(500).json({
       error: 'Google Drive não configurado',
@@ -295,7 +301,7 @@ app.get('/auth/google-drive', (req, res) => {
 });
 
 // Rota: callback OAuth2 do Google Drive
-app.get('/auth/google-drive/callback', async (req, res) => {
+app.get('/api/auth/google-drive/callback', async (req, res) => {
   if (!driveOAuthClient) {
     return res.status(500).send('Erro: Google Drive não configurado');
   }
@@ -350,7 +356,7 @@ async function obterAccessTokenDrive(userId = 'default') {
   const tokenData = driveTokens.get(userId);
 
   if (!tokenData) {
-    throw new Error('Google Drive não autenticado. Conecte em /auth/google-drive');
+    throw new Error('Google Drive não autenticado. Conecte em /api/auth/google-drive');
   }
 
   const { refreshToken } = tokenData;
@@ -376,6 +382,14 @@ async function obterAccessTokenDrive(userId = 'default') {
 app.get('/api/drive/arquivos', async (req, res) => {
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(7)}`;
   const userId = req.query.userId || 'default';
+
+  if (!GOOGLE_DRIVE_CLIENT_ID || !GOOGLE_DRIVE_CLIENT_SECRET) {
+    return res.status(503).json({
+      error: 'Google Drive indisponível',
+      message: 'As credenciais do Google Drive não estão configuradas no backend.',
+      requestId
+    });
+  }
 
   log.info('Google Drive: listar arquivos', { requestId, userId });
 
@@ -425,7 +439,7 @@ app.get('/api/drive/status', (req, res) => {
 // ============================================================
 // AUTENTICAÇÃO (placeholder)
 // ============================================================
-app.post('/auth', (req, res) => {
+app.post('/api/auth', (req, res) => {
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(7)}`;
   const { email, password } = req.body;
 

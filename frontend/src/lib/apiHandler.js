@@ -23,7 +23,7 @@ function logApiError(context, err) {
 // ============================================================
 export function conectarGoogleDrive() {
   const baseUrl = import.meta.env.VITE_API_URL || '';
-  const url = baseUrl + '/auth/google-drive';
+  const url = baseUrl + '/api/auth/google-drive';
   window.location.href = url;
 }
 
@@ -146,13 +146,10 @@ export async function callClaude(systemPrompt, userPrompt, options = {}) {
         timestamp: new Date().toISOString()
       });
 
-      const response = await fetch('/api/claude/v1/messages', {
+      const response = await fetch(import.meta.env.VITE_API_URL + '/api/claude/v1/messages', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload),
         signal: controller.signal

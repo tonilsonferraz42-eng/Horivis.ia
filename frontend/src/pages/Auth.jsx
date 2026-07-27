@@ -10,40 +10,39 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, signUp, user, authError, clearAuthError } = useAuth();
   const navigate = useNavigate();
 
-  // Se já estiver autenticado, redireciona para dashboard
   if (user) {
-    navigate('/dashboard', { replace: true });
     return null;
   }
+
+  const displayError = error || authError;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     setSuccess('');
+    clearAuthError();
 
     try {
       if (isLogin) {
-        // Login com Supabase
         await signIn(email, password);
         navigate('/dashboard', { replace: true });
       } else {
-        // Registo com Supabase
         await signUp(email, password);
-        setSuccess('Conta criada com sucesso! Verifica o teu email para confirmar o registo.');
+        setSuccess('Conta criada com sucesso. Se a confirmação por email estiver ativa, verifica a tua caixa de entrada.');
         setIsLogin(true);
       }
     } catch (err) {
-      // Mapeia erros do Supabase para mensagens amigáveis
       const errorMap = {
         'Invalid login credentials': 'Email ou password incorretos.',
         'Email not confirmed': 'Email ainda não confirmado. Verifica a tua caixa de entrada.',
         'User already registered': 'Este email já está registado. Tenta fazer login.',
         'Password should be at least 6 characters': 'A password deve ter pelo menos 6 caracteres.',
         'Unable to validate email or password': 'Formato de email inválido ou password muito curta.',
+        'Authentication service unavailable. Please try again later.': 'O serviço de autenticação não está disponível. Tenta novamente mais tarde.',
       };
       setError(errorMap[err.message] || err.message || 'Ocorreu um erro inesperado. Tenta novamente.');
       console.error('Erro na autenticação:', err);
@@ -62,10 +61,10 @@ export default function Auth() {
           </p>
         </div>
 
-        {error && (
+        {displayError && (
           <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-xl flex items-start gap-3">
             <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-            <p className="text-sm">{error}</p>
+            <p className="text-sm">{displayError}</p>
           </div>
         )}
 
@@ -128,7 +127,7 @@ export default function Auth() {
         <div className="text-center text-sm text-white/60">
           {isLogin ? 'Não tem conta?' : 'Já tem conta?'}{' '}
           <button
-            onClick={() => { setIsLogin(!isLogin); setError(''); setSuccess(''); }}
+            onClick={() => { setIsLogin(!isLogin); setError(''); setSuccess(''); clearAuthError(); }}
             className="text-cyan-400 hover:text-cyan-300 font-medium"
           >
             {isLogin ? 'Registe-se' : 'Entre'}

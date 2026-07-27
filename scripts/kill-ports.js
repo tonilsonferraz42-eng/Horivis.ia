@@ -1,11 +1,11 @@
-const { execSync } = require('child_process');
-const http = require('http');
+import { execSync } from 'child_process';
+import http from 'http';
 
 const PORTS = [3000, 3001];
 
 function isPortInUse(port) {
   return new Promise((resolve) => {
-    const req = http.request({ hostname: '127.0.0.1', port: port, method: 'GET', timeout: 500 });
+    const req = http.request({ hostname: '127.0.0.1', port, method: 'GET', timeout: 500 });
     req.on('response', () => { req.destroy(); resolve(true); });
     req.on('error', () => { req.destroy(); resolve(false); });
     req.on('timeout', () => { req.destroy(); resolve(false); });
@@ -19,25 +19,17 @@ async function killPort(port) {
     console.log(`[predev] Porta ${port} livre.`);
     return;
   }
-
   try {
-    const stdout = execSync('netstat -ano -p tcp').toString();
-    const regex = new RegExp(`\\s+TCP\\s+\\[?::\\]?127\\.0\\.0\\.1:${port}\\].*?([0-9]+)$`, 'mi');
-    const match = [...stdout.matchAll(regex)]
-      .map(m => parseInt(m[1], 10))
-      .filter(pid => !Number.isNaN(pid));
-
-    if (match.length === 0) {
+    const stdout = execSync(`lsof -ti tcp:${port}`).toString().trim();
+    if (!stdout) {
       console.warn(`[predev] Sem PID para porta ${port}.`);
       return;
     }
-
-    const unique = [...new Set(match)];
-    console.warn(`[predev] Porta ${port} ocupada. Finalizando processos: ${unique.join(', ')}`);
-
-    for (const pid of unique) {
+    const pids = [...new Set(stdout.split('\n').map(pid => pid.trim()).filter(Boolean))];
+    console.warn(`[predev] Porta ${port} ocupada. Finalizando processos: ${pids.join(', ')}`);
+    for (const pid of pids) {
       try {
-        execSync(`taskkill /F /PID ${pid}`, { stdio: 'ignore' });
+        execSync(`kill -9 ${pid}`, { stdio: 'ignore' });
         console.log(`[predev] PID ${pid} finalizado.`);
       } catch {
         console.warn(`[predev] Falha ao finalizar PID ${pid}.`);

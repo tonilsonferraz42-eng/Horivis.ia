@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Megaphone, Activity, Settings, ChevronRight,
   Search, ShieldCheck, BarChart3, FileText, Key, DollarSign, GitBranch,
@@ -1600,6 +1601,7 @@ function HistoricoGlobal({ onReanalisar }) {
 // ============================================================
 export default function Dashboard() {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [activeModule, setActiveModule] = useState('analise-ofertas');
   const [showHistorico, setShowHistorico] = useState(false);
   const [fadeIn, setFadeIn] = useState(true);
@@ -1608,8 +1610,10 @@ export default function Dashboard() {
     setSigningOut(true);
     try {
       await signOut();
+      navigate('/auth', { replace: true });
     } catch (err) {
       console.error('Erro ao sair:', err);
+      navigate('/auth', { replace: true });
     }
   };
 

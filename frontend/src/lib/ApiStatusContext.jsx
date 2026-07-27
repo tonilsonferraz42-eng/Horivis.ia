@@ -3,40 +3,39 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 const ApiStatusContext = createContext();
 
 export function ApiStatusProvider({ children }) {
-  const [status, setStatus] = useState('checking'); // checking | online | demo | offline
+  const [status, setStatus] = useState('checking');
   const [message, setMessage] = useState('A verificar...');
 
   const checkStatus = useCallback(async () => {
     setStatus('checking');
     setMessage('A verificar...');
+
     try {
-      const res = await fetch('/api/claude/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY || '',
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({
-          model: import.meta.env.VITE_ANTHROPIC_MODEL || 'claude-sonnet-5',
-          max_tokens: 1,
-          messages: [{ role: 'user', content: 'ping' }]
-        })
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+
+      const healthRes = await fetch(baseUrl + '/api/health', {
+        method: 'GET',
+        signal: controller.signal,
       });
-      if (res.ok) {
+
+      clearTimeout(timeout);
+
+      if (healthRes.ok) {
         setStatus('online');
         setMessage('IA ATIVA');
-      } else if (res.status === 401) {
-        setStatus('demo');
-        setMessage('MODO DEMO');
-      } else if (res.status === 429) {
-        setStatus('demo');
-        setMessage('MODO DEMO');
-      } else {
-        setStatus('demo');
-        setMessage('MODO DEMO');
+        return;
       }
+
+      if (healthRes.status === 401 || healthRes.status === 429) {
+        setStatus('demo');
+        setMessage('MODO DEMO');
+        return;
+      }
+
+      setStatus('demo');
+      setMessage('MODO DEMO');
     } catch {
       setStatus('offline');
       setMessage('API OFFLINE');
