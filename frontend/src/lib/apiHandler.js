@@ -87,7 +87,23 @@ export async function callKeywords(keyword, options = {}) {
 // ============================================================
 // CLIENTE API CENTRALIZADO COM RETRY E TIMEOUT
 // ============================================================
-export async function callClaude(systemPrompt, userPrompt, options = {}) {
+export async function callClaude(systemOrMessages, userPrompt, options = {}) {
+  let systemPrompt = '';
+  let messages = [];
+
+  // Suporta dois formatos de chamada:
+  //   1. callClaude(messages[], { module, signal })  ← usado nos módulos do Dashboard
+  //   2. callClaude(systemPrompt, userPrompt, { module, signal })  ← legado
+  if (Array.isArray(systemOrMessages)) {
+    // Formato 1: primeiro arg é array de mensagens, segundo arg é options
+    messages = systemOrMessages;
+    options = userPrompt || {};
+  } else {
+    // Formato 2: primeiro arg é systemPrompt, segundo é userPrompt (string)
+    systemPrompt = systemOrMessages;
+    messages = [{ role: 'user', content: userPrompt }];
+  }
+
   const {
     module = 'unknown',
     signal,
@@ -96,7 +112,8 @@ export async function callClaude(systemPrompt, userPrompt, options = {}) {
 
   // 1. Verifica cache primeiro (se cache habilitado e não for forçada atualização)
   if (!options.skipCache) {
-    const cacheKey = btoa(systemPrompt + userPrompt).substring(0, 50);
+    const rawForCache = JSON.stringify(messages);
+    const cacheKey = btoa(systemPrompt + rawForCache).substring(0, 50);
     const cached = localStorage.getItem('horivis_cache_' + cacheKey);
     if (cached) {
       try {
@@ -113,9 +130,11 @@ export async function callClaude(systemPrompt, userPrompt, options = {}) {
   const payload = {
     model: import.meta.env.VITE_ANTHROPIC_MODEL || 'claude-sonnet-5',
     max_tokens: 4096,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userPrompt }]
+    messages
   };
+  if (systemPrompt) {
+    payload.system = systemPrompt;
+  }
 
   // 3. Implementação manual de timeout
   const timeoutId = setTimeout(() => {
@@ -169,7 +188,8 @@ export async function callClaude(systemPrompt, userPrompt, options = {}) {
 
         // Guarda no cache
         if (!options.skipCache) {
-          const cacheKey = btoa(systemPrompt + userPrompt).substring(0, 50);
+          const rawForCache = JSON.stringify(messages);
+          const cacheKey = btoa(systemPrompt + rawForCache).substring(0, 50);
           localStorage.setItem('horivis_cache_' + cacheKey,
             JSON.stringify({ data: text, timestamp: Date.now() })
           );

@@ -746,14 +746,14 @@ function AnaliseMercado() {
       return;
     }
     setLoading(true); setError(''); setResultado(null);
-    setDemo(false); setIsCache(false);
+    setIsDemo(false); setIsCache(false);
     abortRef.current = new AbortController();
 
     const result = await callClaude([
       { role: 'user', content: `Analisa o mercado para o produto: ${produto}. Fornece: produto, mercado, tendencia, scoreGeral (0-100), concorrentes (nome, score, share), oportunidades.` }
     ], { module: 'analise-mercado', signal: abortRef.current.signal });
 
-    setDemo(result.fromDemo);
+    setIsDemo(result.fromDemo);
     setIsCache(result.fromCache);
     setLoading(false);
     if (result.success) setResultado(result.data);
@@ -984,7 +984,7 @@ function GeradorPresell() {
     const nome = produto.trim();
     if (!nome) { setError('Informe o nome do produto para gerar o presell.'); return; }
     if (nome.length < 3) { setError('O nome do produto deve ter pelo menos 3 caracteres.'); return; }
-    setLoading(true); setError(''); setResultado(null); setDemo(false); setIsCache(false);
+    setLoading(true); setError(''); setResultado(null); setIsDemo(false); setIsCache(false);
     abortRef.current = new AbortController();
 
     const result = await callClaude([
@@ -1111,7 +1111,7 @@ function PalavrasChave() {
     const termo = produto.trim();
     if (!termo) { setError('Informe um nicho ou produto para buscar palavras-chave.'); return; }
     setLoading(true); setError(''); setResultado(null); setSemResultado(false);
-    setDemo(false); setIsCache(false);
+    setIsDemo(false); setIsCache(false);
     abortRef.current = new AbortController();
 
     const result = await callKeywords(termo, { signal: abortRef.current.signal });
