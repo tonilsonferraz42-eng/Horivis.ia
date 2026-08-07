@@ -40,7 +40,7 @@ const SENSITIVE_PATTERNS = [
 // Arquivos/pastas proibidos de commitar
 const FORBIDDEN_PATHS = [
   /\.env$/,
-  /\.env\./,
+  /\.env\.(?!example$)/,
   /senhas/,
   /horivis senhas/,
   /credentials/,
